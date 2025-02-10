@@ -103,7 +103,7 @@ function Perform-ServiceSpecificScans($ip, $fileBaseName, $result) {
         
         if ($matchingServices) {
             $scanType = $config.ScanType
-            $ip = $ip -replace '[^\w\-]', '-'
+            # $ip = $ip -replace '[^\w\-]', '-'
             $outputName = "${ip}_${scanType}"
             $outputPath = Join-Path -Path $outputFolder -ChildPath $fileBaseName | Join-Path -ChildPath $outputName
             $portList = ($matchingServices.Port | Sort-Object -Unique) -join ","
@@ -137,7 +137,7 @@ foreach ($file in $inputFiles) {
     
     $ips = Get-Content $file.FullName
     foreach ($ip in $ips) {
-        $ip = $ip -replace '[^\w\-]', '-'
+        # $ip = $ip -replace '[^\w\-]', '-'
         $outputName = "${ip}_${scanType}"
         $outputPath = Join-Path -Path $outputFolder -ChildPath $fileBaseName | Join-Path -ChildPath $outputName
         
@@ -179,7 +179,7 @@ foreach ($file in $inputFiles) {
     $ips = Get-Content $file.FullName
     
     foreach ($ip in $ips) {
-        $ip = $ip -replace '[^\w\-]', '-'
+        # $ip = $ip -replace '[^\w\-]', '-'
         
         # Full TCP scan
         $outputName = "${ip}_tcp"
@@ -196,7 +196,7 @@ foreach ($file in $inputFiles) {
         Invoke-Expression $nmapCommand
         
         # Parse results for additional scans
-        $tcpXmlPath = Join-Path -Path $outputFolder -ChildPath $fileBaseName | Join-Path -ChildPath "${ip}_tcp-scan.xml"
+        $tcpXmlPath = Join-Path -Path $outputFolder -ChildPath $fileBaseName | Join-Path -ChildPath "${ip}_tcp.xml"
         $tcpResults = Parse-NmapXML $tcpXmlPath
         
         foreach ($result in $tcpResults) {
