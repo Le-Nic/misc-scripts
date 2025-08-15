@@ -6,11 +6,13 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 
 
-in_path = "input/Nmap"  # Change this value to folder containing all Nmap files
+in_path = r"test2"  # Change this value to folder containing all Nmap files
 out_path = "nmap_out_ciphers.csv"  # Change this value to the output file name / path
 
+offline_mode = True
+ciphersuite_path = "ciphersuite_api.json"
+
 ciphersuite_tech_path = "https://raw.githubusercontent.com/hcrudolph/ciphersuite.info/refs/heads/master/directory/fixtures/01_technologies.yaml"
-# ciphersuite_vuln_path = "https://raw.githubusercontent.com/hcrudolph/ciphersuite.info/refs/heads/master/directory/fixtures/00_vulnerabilities.yaml"
 
 ciphers_set = set()  # Records unique entries of ciphers found in Nmap results
 df = pd.DataFrame(columns=['ip', 'port', 'cipher', 'cipher_strength', 'kex_info', 'Security',
@@ -40,7 +42,7 @@ def find_fields(data, model, pk):
     return None
 
 
-def query_cipher(cipher):
+def query_cipher_online(cipher):
     base_url = "https://ciphersuite.info/api/cs/"
     url = f"{base_url}{cipher}/"
 
@@ -51,6 +53,16 @@ def query_cipher(cipher):
     except requests.exceptions.RequestException as e:
         print(f"\t> [ERROR] Error querying {cipher}: {str(e)}")
         return None
+
+def query_cipher_offline(cipher):
+    with open(ciphersuite_path) as f:
+        ciphersuite_data = json.load(f)['ciphersuites']
+
+        for data in ciphersuite_data:
+            if list(data.keys())[0] == cipher:
+                return data
+    
+    return None
 
 
 # Load ciphersuite YAML models
@@ -122,6 +134,7 @@ print(f"[!] Total entries extracted: {len(df.index)}")
 
 df = df.drop_duplicates()
 df_tls = df_tls.drop_duplicates()
+print(df_tls)
 
 print(f"[!] Total entries extracted (after deduplication): {len(df.index)}")
 print(f"[!] Querying ciphersuite API to extract kex/auth/enc/hash alogrithms..")
@@ -132,7 +145,8 @@ api_pks = ['protocol_version', 'kex_algorithm',
            'auth_algorithm', 'enc_algorithm', 'hash_algorithm']
 
 for cipher in ciphers_set:
-    api_res = query_cipher(cipher)
+    
+    api_res = query_cipher_offline(cipher) if offline_mode else query_cipher_online(cipher)
 
     if api_res is None:
         continue
