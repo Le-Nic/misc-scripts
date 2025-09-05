@@ -3,10 +3,11 @@ import os
 import requests
 import yaml
 import pandas as pd
+import traceback
 import xml.etree.ElementTree as ET
 
 
-in_path = r"test2"  # Change this value to folder containing all Nmap files
+in_path = r"test4"  # Change this value to folder containing all Nmap files
 out_path = "nmap_out_ciphers.csv"  # Change this value to the output file name / path
 
 offline_mode = True
@@ -51,7 +52,8 @@ def query_cipher_online(cipher):
         response.raise_for_status()  # Raise an exception for bad status codes
         return response.json()
     except requests.exceptions.RequestException as e:
-        print(f"\t> [ERROR] Error querying {cipher}: {str(e)}")
+        print(f"\t> [ERROR] Error querying {cipher}")
+        traceback.print_exc()
         return None
 
 def query_cipher_offline(cipher):
@@ -83,7 +85,8 @@ for root_path, dirs, files in os.walk(in_path):
             tree = ET.parse(os.path.join(root_path, file))
             root = tree.getroot()
         except Exception as e:
-            print(f"\t> [ERROR] Error parsing {file_name}: {str(e)}")
+            print(f"\t> [ERROR] Error parsing {file_name}")
+            traceback.print_exc()
 
         print(f"\t> Found {file_name}")
 
@@ -134,7 +137,6 @@ print(f"[!] Total entries extracted: {len(df.index)}")
 
 df = df.drop_duplicates()
 df_tls = df_tls.drop_duplicates()
-print(df_tls)
 
 print(f"[!] Total entries extracted (after deduplication): {len(df.index)}")
 print(f"[!] Querying ciphersuite API to extract kex/auth/enc/hash alogrithms..")
@@ -180,6 +182,16 @@ for cipher in ciphers_set:
     df.loc[idx, ['Security'] + model_pks] = [api_res[cipher]
                                              ['security']] + [api_res[cipher][api_pk] for api_pk in api_pks]
     df.loc[idx, list(vulns)] = True
+
+
+# Add new section and "headers" for TLS versions
+df = pd.concat([df, pd.Series("")], ignore_index=True)
+df = pd.concat([df, pd.Series("")], ignore_index=True)
+df.loc[df.index[-1], ['ip', 'port', 'cipher']] = ['ip', 'port', 'tls_version']
+
+df_tls = df_tls.groupby(['ip', 'port'])['tls_version'].apply(lambda x: ', '.join(x)).reset_index()
+df_tls = df_tls.rename(columns={'tls_version': 'cipher'})
+df = pd.concat([df, df_tls])
 
 # Output results to CSV
 df.to_csv(out_path, index=False)
